@@ -23,7 +23,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3. S3로 정적 파일 업로드
+      # 3. S3로 정적 파일 업로드 (동기화)
       - name: Upload assets to S3
         run: |
           aws s3 sync html s3://${{ secrets.S3_BUCKET_NAME }}/html --delete
@@ -38,12 +38,19 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }} # 또는 v2 같이 고정 태그 사용 가능
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          # 이미지 빌드
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-          
-          # 이미지 푸시
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      # 6. AWS SSM을 사용하여 세훈님의 EC2에 명령 전송
+      - name: Deploy to EC2 using SSM
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=tag:Name,Values=st6-ghb-tmp-ec2" \
+            --parameters 'commands'=["aws s3 sync s3://${{ secrets.S3_BUCKET_NAME }}/html /home/ec2-user/nginx/html --delete"] \
+            --comment "Deploying latest assets via SSM to st6-ghb-tmp-ec2" \
+            --region ${{ secrets.AWS_REGION }}
