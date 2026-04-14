@@ -45,7 +45,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      # 6. AWS SSM을 사용하여 세훈님의 EC2에 명령 전송 (S3 동기화 및 Docker 업데이트)
+      # 6. AWS SSM을 사용하여 세훈님의 EC2에 명령 전송
       - name: Deploy to EC2 using SSM
         run: |
           aws ssm send-command \
@@ -57,7 +57,8 @@ jobs:
               "sudo docker pull ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}",
               "sudo docker stop nginx-container || true",
               "sudo docker rm nginx-container || true",
-              "sudo docker run -d --name nginx-container -p 80:80 ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}"
+              "sudo docker run -d --name nginx-container -p 80:80 ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}",
+              "sudo docker image prune -f"
             ]' \
             --comment "Deploying latest assets and docker image via SSM" \
             --region ${{ secrets.AWS_REGION }}
