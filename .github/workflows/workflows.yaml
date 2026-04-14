@@ -1,0 +1,33 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main  # 배포를 원하는 브랜치명으로 수정하세요
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 소스 코드 체크아웃
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. AWS 자격 증명 설정
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 3. S3로 설정 및 자산 업로드
+      - name: Upload assets to S3
+        run: |
+          # default.conf는 이전의 '디렉토리 생성 이슈' 방지를 위해 주석 처리합니다.
+          # aws s3 cp default.conf s3://${{ secrets.S3_BUCKET_NAME }}/conf.d/default.conf
+          
+          # html 폴더 내 파일들을 S3로 동기화 (기존 파일 유지하며 변경분만 업데이트)
+          aws s3 sync html s3://${{ secrets.S3_BUCKET_NAME }}/html --delete
